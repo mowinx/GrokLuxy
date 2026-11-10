@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 
@@ -12,7 +12,7 @@ declare global {
   }
 }
 
-export default function OnboardPage() {
+function OnboardForm() {
   const searchParams = useSearchParams()
   const refCode = searchParams.get('ref')
   const [cars, setCars] = useState([{ make: '', model: '', year: '', color: '' }])
@@ -23,26 +23,20 @@ export default function OnboardPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    // Load Selfany script
     const script = document.createElement('script')
     script.src = 'https://selfany.com/embed/js'
     script.async = true
     document.body.appendChild(script)
 
-    // Listen for payment completion
     const handleMessage = (event: MessageEvent) => {
-      if (event.data.action === 'reloadParent') {
-        // Payment likely completed — update status
-        if (ownerId) {
-          supabase.from('car_owners').update({ 
-            payment_status: 'paid',
-            onboarding_status: 'paid',
-            completed_at: new Date().toISOString()
-          }).eq('id', ownerId).then(() => {
-            setMessage('Payment successful! Your registration is complete and you are on the waitlist.')
-          })
-        }
-        window.location.reload()
+      if (event.data.action === 'reloadParent' && ownerId) {
+        supabase.from('car_owners').update({ 
+          payment_status: 'paid',
+          onboarding_status: 'paid',
+          completed_at: new Date().toISOString()
+        }).eq('id', ownerId).then(() => {
+          setMessage('Payment successful! Your registration is complete and you are on the waitlist.')
+        })
       }
     }
     window.addEventListener('message', handleMessage)
@@ -160,5 +154,13 @@ export default function OnboardPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function OnboardPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <OnboardForm />
+    </Suspense>
   )
 }
